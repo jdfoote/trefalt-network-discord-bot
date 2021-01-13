@@ -182,7 +182,7 @@ def _make_mapping(students, group_size):
 
 def _get_group_size(n):
     min_observers = None
-    for x in range(2,3):
+    for x in range(7,10):
         observers = n % x
         if min_observers is None or observers < min_observers:
             best_fit = x
