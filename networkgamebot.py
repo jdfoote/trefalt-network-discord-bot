@@ -13,7 +13,7 @@ class NetworkGameBot(discord.Client):
     async def on_ready(self):
         print(f'Logged on as {self.user}! Ready for the network game!')
 
-    async def on_message(self, message, voice_channel = 'Class Sessions'):
+    async def on_message(self, message, voice_channel = 'class-sessions'):
         if message.author == self.user:
             return
 
@@ -29,18 +29,19 @@ class NetworkGameBot(discord.Client):
 
             self.game_state = get_game_state(present_students, edgelist = './network_game/test_edgelist.csv')
             # Build a mapping from names to user objects so that people can refer to users
-            self.active_list = {x.name: x for x in self.game_state}
-            self.observers = [x for x in classroom.members if x not in self.game_state]
             if self.game_state is not None:
+                self.active_list = {x.name: x for x in self.game_state}
+                self.observers = [x for x in classroom.members if x not in self.game_state]
                 for student in self.game_state:
-                    await student.send(self.make_status(student))
+                    await student.send(self.make_status(student, welcome = True))
                 graphs = make_graph(self.game_state)
                 for o in self.observers:
-                    for f in graphs:
+                    await o.send(self.get_observer_welcome())
+                    for i, f in enumerate(graphs):
+                        await message.author.send(f'Group {i+1}')
                         await o.send(file=discord.File(f))
             else:
-                for student in present_students:
-                    await student.send("Not enough students to play")
+                await message.channel.send("Not enough students to play")
 
         if message.content.startswith('$give'):
             try:
@@ -76,7 +77,8 @@ class NetworkGameBot(discord.Client):
                 await message.author.send(self.make_status(message.author))
             elif message.author in self.observers:
                 graphs = make_graph(self.game_state)
-                for f in graphs:
+                for i, f in enumerate(graphs):
+                    await message.author.send(f'Group {i+1}')
                     await message.author.send(file=discord.File(f))
             else:
                 await message.author.send("I couldn't find you. Are you playing the game?")
@@ -95,13 +97,43 @@ class NetworkGameBot(discord.Client):
         u_data['finished'] = False
         return False
 
-    def make_status(self, student):
-        str = 'You are allowed to talk to:\n'
+    def make_status(self, student, welcome = False):
+        s = ''
+        if welcome == True:
+            s += '''
+Welcome to the Network Game!
+The goal of the game is to get the resources you need as quickly as possible. You start with some resources. They may be what you need or not, it which case you may use them to get what you need. However, you are part of a network. You can only communicate with your network "neighbors".
+
+Rules:
+1. All communication has to be one-to-one (i.e., via DM on Discord) and only with your neighbors
+2. All communication has to be written, but you can write whatever you want
+Protip: It may not always be in your interest to share information with others
+
+
+'''
+        s += 'You are allowed to communicate with:\n'
         for neighbor in self.game_state[student]['neighbors']:
-            str += f"{neighbor.mention}\n"
-        str += f"You have these resources: {self.game_state[student]['has']}.\n"
-        str += f"You need: {self.game_state[student]['needs']}."
-        return str
+            s += f"{neighbor.mention}\n"
+        s += f"You have these resources: {self.game_state[student]['has']}.\n"
+        s += f"You need: {self.game_state[student]['needs']}."
+        if welcome == True:
+            s += '''
+
+In order to give a resource to someone else, you will need to tell me what you want to give, and to whom. In a private chat with me (the Network Game Bot), type something like this:
+
+$give JeremyFoote A.
+
+This will send resource 'A' (assuming you have it) to the user JeremyFoote.
+
+Of course, it has to be a resource that you have, and you have to be neighbors with the person you are sending it to.
+
+If you forget what resources you have or who your neighbors are, just type this in a message to me:
+
+$status
+
+Once you have the resources you need, you can brag about it in the #general channel. After that, you may (but don't have to) continue to participate by communicating with your "neighbors" and passing on mesages and resources.
+'''
+        return s
 
 
     def give_resource(self, resource, u_from, u_to):
@@ -113,6 +145,22 @@ class NetworkGameBot(discord.Client):
             self.game_state[u_from]['has'].remove(resource)
             self.game_state[u_to]['has'].append(resource)
             return True
+
+    def get_observer_welcome(self):
+        s = '''
+Welcome to the Network Game!
+
+You are an observer this round. This is admittedly not as fun as playing the game, but I've tried to make it as exciting as possible.
+
+Everyone who is playing exists as part of a network. They have resoures, and they are trying to get different resources. Right after this message you should see one or two network graphs. These give you a birds-eye view of everyone who is playing the game. They show how everyone who is playing is connected, what they have, and what they need.
+
+The cool thing about these graphs is that they will be updated as people play the game. You can call them up by typing a message to me that simply says:
+
+$status
+
+You will also get a message any time someone gives a resource to someone else.'''
+
+        return s
 
 
 def get_game_state(student_list,
@@ -180,9 +228,11 @@ def _make_mapping(students, group_size):
     return mapping
 
 
-def _get_group_size(n):
+def _get_group_size(n,
+        min_size = 7,
+        max_size = 9):
     min_observers = None
-    for x in range(7,10):
+    for x in range(min_size, max_size + 1):
         observers = n % x
         if min_observers is None or observers < min_observers:
             best_fit = x
