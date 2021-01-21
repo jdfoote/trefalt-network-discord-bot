@@ -20,14 +20,14 @@ class NetworkGameBot(discord.Client):
         # TODO: Only let admin send this command
         if (message.content.startswith('$network game')) and ('Teachers' in [r.name for r in message.author.roles]):
             print("Starting the game")
-            classroom = [x for x in message.guild.voice_channels if x.name == voice_channel and x.category_id == message.channel.category_id][0]
+            classroom = [x for x in message.guild.voice_channels if x.name.startswith(voice_channel) and x.category_id == message.channel.category_id][0]
 
             present_students = []
             for member in classroom.members:
                 if 'Students' in [r.name for r in member.roles]:
                     present_students.append(member)
 
-            self.game_state = get_game_state(present_students, edgelist = './network_game/test_edgelist.csv')
+            self.game_state = get_game_state(present_students, edgelist = './network_game/edgelist.csv')
             # Build a mapping from names to user objects so that people can refer to users
             if self.game_state is not None:
                 self.active_list = {x.name: x for x in self.game_state}
@@ -45,7 +45,9 @@ class NetworkGameBot(discord.Client):
 
         if message.content.startswith('$give'):
             try:
-                _, u_to, resource = message.content.split(' ')
+                msg_list = message.content.split(' ')
+                u_to = ' '.join(msg_list[1:-1])
+                resource = msg_list[-1]
                 u_to = u_to.strip('@')
             except:
                 await message.author.send("Badly formed command. It has to be '$give user resource'")
@@ -102,12 +104,11 @@ class NetworkGameBot(discord.Client):
         if welcome == True:
             s += '''
 Welcome to the Network Game!
-The goal of the game is to get the resources you need as quickly as possible. You start with some resources. They may be what you need or not, it which case you may use them to get what you need. However, you are part of a network. You can only communicate with your network "neighbors".
+The goal of the game is to get the resources you need as quickly as possible.
 
 Rules:
 1. All communication has to be one-to-one (i.e., via DM on Discord) and only with your neighbors
 2. All communication has to be written, but you can write whatever you want
-Protip: It may not always be in your interest to share information with others
 
 
 '''
@@ -119,19 +120,13 @@ Protip: It may not always be in your interest to share information with others
         if welcome == True:
             s += '''
 
-In order to give a resource to someone else, you will need to tell me what you want to give, and to whom. In a private chat with me (the Network Game Bot), type something like this:
+You can give resources to others by talking to me. For example, to give A to JeremyFoote you would type
 
 $give JeremyFoote A.
-
-This will send resource 'A' (assuming you have it) to the user JeremyFoote.
-
-Of course, it has to be a resource that you have, and you have to be neighbors with the person you are sending it to.
 
 If you forget what resources you have or who your neighbors are, just type this in a message to me:
 
 $status
-
-Once you have the resources you need, you can brag about it in the #general channel. After that, you may (but don't have to) continue to participate by communicating with your "neighbors" and passing on mesages and resources.
 '''
         return s
 
@@ -218,13 +213,15 @@ def _make_mapping(students, group_size):
     mapping = {}
     if n_observers > 0:
         mapping['observers'] = students[-n_observers:]
-    for i, student in enumerate(students[-n_observers:]):
+        students = students[:-n_observers]
+    for i, student in enumerate(students):
         j = i % group_size
         idx = j + 1
         if idx in mapping:
             mapping[idx].append(student)
         else:
             mapping[idx] = [student]
+
     return mapping
 
 
@@ -260,17 +257,22 @@ def make_graph(game_state):
     for nodes in G.components():
         sg = G.subgraph(nodes)
         fn = f'{fig_fn}_{i}.png'
-        plot = ig.plot(sg, margin = 80, target = fn)
+        plot = ig.plot(sg.simplify(), margin = 80, target = fn)
         graph_fns.append(fn)
         i += 1
     return graph_fns
 
 
 
-# this is necessary to get information about who is online
-intents = discord.Intents.default()
-intents.members = True
-intents.presences = True
+def main():
+    # this is necessary to get information about who is online
+    intents = discord.Intents.default()
+    intents.members = True
+    intents.presences = True
 
-gamebot = NetworkGameBot(intents=intents)
-gamebot.run(config.netgamekey)
+    gamebot = NetworkGameBot(intents=intents)
+    gamebot.run(config.netgamekey)
+
+
+if __name__ == '__main__':
+    main()
