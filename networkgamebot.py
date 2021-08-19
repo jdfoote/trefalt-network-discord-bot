@@ -8,6 +8,8 @@ import igraph as ig
 
 
 fig_fn = './network_game/curr_graph'
+#EDGELIST = './network_game/test_edgelist.csv'
+EDGELIST = './network_game/edgelist.csv'
 
 class NetworkGameBot(discord.Client):
     async def on_ready(self):
@@ -17,21 +19,20 @@ class NetworkGameBot(discord.Client):
         if message.author == self.user:
             return
 
-        # TODO: Only let admin send this command
         if (message.content.startswith('$network game')) and ('Teachers' in [r.name for r in message.author.roles]):
             print("Starting the game")
-            classroom = [x for x in message.guild.voice_channels if x.name.startswith(voice_channel) and x.category_id == message.channel.category_id][0]
+            classroom = [x for x in message.guild.members if x.status==discord.Status.online and not x.bot]
 
             present_students = []
-            for member in classroom.members:
+            for member in classroom:
                 if 'Students' in [r.name for r in member.roles]:
                     present_students.append(member)
 
-            self.game_state = get_game_state(present_students, edgelist = './network_game/edgelist.csv')
+            self.game_state = get_game_state(present_students, edgelist = EDGELIST)
             # Build a mapping from names to user objects so that people can refer to users
             if self.game_state is not None:
                 self.active_list = {x.name: x for x in self.game_state}
-                self.observers = [x for x in classroom.members if x not in self.game_state]
+                self.observers = [x for x in classroom if x not in self.game_state]
                 for student in self.game_state:
                     await student.send(self.make_status(student, welcome = True))
                 graphs = make_graph(self.game_state)
@@ -159,7 +160,7 @@ You will also get a message any time someone gives a resource to someone else.''
 
 
 def get_game_state(student_list,
-        edgelist = './network_game/edgelist.csv',
+        edgelist,
         resource_prefix = './network_game/resources_'
         ):
 
