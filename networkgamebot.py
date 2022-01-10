@@ -25,7 +25,7 @@ class NetworkGameBot(discord.Client):
 
             present_students = []
             for member in classroom:
-                if 'Students' in [r.name for r in member.roles]:
+                if 'Teachers' not in [r.name for r in member.roles]:
                     present_students.append(member)
 
             self.game_state = get_game_state(present_students, edgelist = EDGELIST)
@@ -90,8 +90,12 @@ class NetworkGameBot(discord.Client):
 
     def newly_finished(self, u_to):
         u_data = self.game_state[u_to]
-        if set(u_data['needs']) <= set(u_data['has']):
+        is_done = True
+        for x in u_data['needs']:
+            if u_data['needs'].count(x) > u_data['has'].count(x):
+                is_done = False
             # Check if already finished from before
+        if is_done:
             if u_data['finished'] == True:
                 return False
             else:

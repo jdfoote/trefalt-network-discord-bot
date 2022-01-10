@@ -13,7 +13,7 @@ netgamekey = 'YOURTOKENHERE'
 ```
 pip3 install python-igraph pycairo discord.py
 ```
-6. Set up roles on Discord. The bot expects that the user running the game has the "Teachers" role and the people playing have the "Students" role.
+6. Set up roles on Discord. The bot expects that the user running the game has the "Teachers" role.
 7. Set up a "category" for your class. (I think it will probably work without a category, but I haven't tested it). 
 8. Run the bot
 ```
@@ -26,7 +26,9 @@ $network game
 
 If everything is set up correctly, then it should start the game, and the NetworkGameBot will send messages to everyone explaining how to play. Note that you will need at least 7 people online in the category before the game will work.
 
-Teachers will get the "observer" role, where they can see the full network graph and who has what. Get an updated version of the network graphs with
+Teachers will get the "observer" role, where they can see the full network graph and who has what. Get an updated version of the network graphs by running:
 ```
 $status
 ```
+
+I usually run `$status` many, many times during the game and then use those visualizations to show the students how information moved through the network.
