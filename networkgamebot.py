@@ -12,6 +12,12 @@ fig_fn = './network_game/curr_graph'
 EDGELIST = './network_game/edgelist.csv'
 
 class NetworkGameBot(discord.Client):
+
+    def __init__(self, intents, user_role='COM-411'):
+        self.user_role = user_role
+
+        super().__init__(intents=intents)
+
     async def on_ready(self):
         print(f'Logged on as {self.user}! Ready for the network game!')
 
@@ -25,8 +31,9 @@ class NetworkGameBot(discord.Client):
 
             present_students = []
             for member in classroom:
-                if 'Teachers' not in [r.name for r in member.roles]:
+                if self.user_role in [r.name for r in member.roles]:
                     present_students.append(member)
+                    print([x.name for x in present_students])
 
             self.game_state = get_game_state(present_students, edgelist = EDGELIST)
             # Build a mapping from names to user objects so that people can refer to users
@@ -39,7 +46,7 @@ class NetworkGameBot(discord.Client):
                 for o in self.observers:
                     await o.send(self.get_observer_welcome())
                     for i, f in enumerate(graphs):
-                        await message.author.send(f'Group {i+1}')
+                        await o.send(f'Group {i+1}')
                         await o.send(file=discord.File(f))
             else:
                 await message.channel.send("Not enough students to play")
@@ -275,7 +282,7 @@ def main():
     intents.members = True
     intents.presences = True
 
-    gamebot = NetworkGameBot(intents=intents)
+    gamebot = NetworkGameBot(intents=intents, user_role = 'COM-411')
     gamebot.run(config.netgamekey)
 
 
